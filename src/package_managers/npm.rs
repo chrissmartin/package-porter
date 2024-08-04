@@ -62,7 +62,7 @@ impl PackageManager for NpmPackageManager {
         let mut command = Command::new("npm");
         command
             .arg("pack")
-            .arg(format!("{}@{}", config.package_name, version))
+            .arg(format!("{}@{}", &config.full_package_name(), version))
             .arg("--userconfig")
             .arg(&npmrc_path);
 
