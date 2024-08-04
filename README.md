@@ -1,112 +1,93 @@
-# package-porter
+# Package Porter
 
-## Universal Package Migration Tool
+Package Porter is a universal package migration tool built in Rust. It allows you to easily transfer packages between different registries of the same type (e.g., npm to npm, PyPI to PyPI).
 
-package-porter is a versatile command-line tool designed to facilitate the migration of packages between different registries. It currently supports npm and PyPI, with the flexibility to extend support for other package ecosystems.
+## Features
 
-### Features
+- Support for npm and PyPI package registries
+- Fetch package versions from a source registry
+- Download specific package versions
+- Publish packages to a target registry
+- Authentication support for both source and target registries
+- Verbose mode for detailed output
+- Dry-run option for testing without actual publishing
+- Configuration via command-line arguments or environment variables
 
-- Migrate packages between registries (e.g., from npm to a private registry)
-- Support for multiple package ecosystems (currently npm and PyPI)
-- Version sorting and comparison following semver rules
-- Dry-run mode for testing migrations without making changes
-- Verbose logging for detailed operation information
-- Configurable via command-line arguments or configuration file
+## Installation
 
-### Installation
+1. Ensure you have Rust and Cargo installed on your system. If not, you can install them from [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install).
 
-1. Clone the repository or download the `package-porter` script.
-2. Make the script executable:
+2. Clone the repository:
+
    ```
-   chmod +x package-porter
+   git clone https://github.com/your-username/package-porter.git
+   cd package-porter
    ```
-3. Optionally, move the script to a directory in your PATH for easier access.
 
-### Configuration
+3. Build the project:
 
-package-porter can be configured using command-line arguments or a configuration file. The default configuration file is `~/.package-porter.env`.
+   ```
+   cargo build --release
+   ```
 
-Example configuration file (`~/.package-porter.env`):
+4. The binary will be available at `target/release/package-porter`.
+
+## Usage
+
+You can run Package Porter using the following command structure:
+
+```
+package-porter [OPTIONS]
+```
+
+### Options
+
+- `-s, --source-registry <URL>`: Source registry URL
+- `-t, --target-registry <URL>`: Target registry URL
+- `-p, --package <NAME>`: Package name
+- `--scope <SCOPE>`: Package scope (if applicable)
+- `-r, --registry-type <TYPE>`: Registry type (npm, pypi)
+- `-v, --verbose`: Enable verbose output
+- `--dry-run`: Perform a dry run without actual publishing
+
+### Environment Variables
+
+You can also configure Package Porter using environment variables. Create a `.env` file in the project directory with the following structure:
 
 ```
 SOURCE_REGISTRY=https://registry.npmjs.org
 TARGET_REGISTRY=https://your-private-registry.com
-PACKAGE_NAME=your-package-name
-PACKAGE_SCOPE=@your-scope
-SOURCE_AUTH_TOKEN=your-source-auth-token
-TARGET_AUTH_TOKEN=your-target-auth-token
+PACKAGE_NAME=your-package
+PACKAGE_SCOPE=your-scope
+SOURCE_AUTH_TOKEN=your-source-token
+TARGET_AUTH_TOKEN=your-target-token
 REGISTRY_TYPE=npm
-VERBOSE=false
+VERBOSE=true
 DRY_RUN=false
 ```
-
-### Usage
-
-Basic usage:
-
-```
-./package-porter -r npm -p your-package-name
-```
-
-With additional options:
-
-```
-./package-porter -r npm -p your-package-name -s https://registry.npmjs.org -t https://your-private-registry.com --verbose
-```
-
-### Command-line Options
-
-- `-s, --source-registry URL`: Source registry URL
-- `-t, --target-registry URL`: Target registry URL
-- `-p, --package NAME`: Package name
-- `--scope SCOPE`: Package scope (if applicable)
-- `-r, --registry-type TYPE`: Registry type (npm, pypi)
-- `-c, --config FILE`: Path to configuration file
-- `-v, --verbose`: Enable verbose output
-- `--dry-run`: Perform a dry run without actual publishing
-- `-h, --help`: Display help message
-
-### Supported Registry Types
-
-- npm
-- PyPI
-
-### Extending Support for Other Registries
-
-To add support for a new package ecosystem:
-
-1. Add new functions for fetching versions, downloading, and publishing packages.
-2. Update the `fetch_versions`, `download_package`, and `publish_package` functions to include the new registry type.
-3. Add any necessary configuration options or authentication methods for the new registry.
 
 ### Examples
 
 1. Migrate an npm package:
 
    ```
-   ./package-porter -r npm -p lodash -s https://registry.npmjs.org -t https://your-private-registry.com
+   package-porter -s https://registry.npmjs.org -t https://your-private-registry.com -p your-package -r npm
    ```
 
-2. Dry run for a PyPI package:
+2. Migrate a scoped npm package with verbose output:
 
    ```
-   ./package-porter -r pypi -p requests --dry-run
+   package-porter -s https://registry.npmjs.org -t https://your-private-registry.com -p your-package --scope @your-scope -r npm -v
    ```
 
-3. Migrate a scoped npm package with verbose logging:
+3. Perform a dry run for a PyPI package:
    ```
-   ./package-porter -r npm -p @types/node --scope @types -v
+   package-porter -s https://pypi.org -t https://your-private-pypi.com -p your-package -r pypi --dry-run
    ```
 
-### Notes
+## Contributing
 
-- Ensure you have the necessary permissions and authentication tokens for both source and target registries.
-- For PyPI migrations, make sure you have `pip` and `twine` installed.
-- Always test migrations using the `--dry-run` option before performing actual migrations.
-
-### Contributing
-
-Contributions to package-porter are welcome! Please feel free to submit issues, feature requests, or pull requests.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
