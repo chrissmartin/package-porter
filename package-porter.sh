@@ -11,8 +11,10 @@ SOURCE_AUTH_TOKEN=""
 TARGET_AUTH_TOKEN=""
 VERBOSE=false
 DRY_RUN=false
-CONFIG_FILE="$HOME/.package-porter.env"
+CONFIG_FILE=".env"
 REGISTRY_TYPE="npm"  # Default to npm, but could be "pypi", "rubygems", etc.
+SOURCE_NPMRC_FILE="source.npmrc"
+TARGET_NPMRC_FILE="target.npmrc"
 
 # Function to display usage information
 usage() {
@@ -47,6 +49,14 @@ log_dry_run() {
     if [ "$DRY_RUN" = true ]; then
         echo "[DRY RUN] $1"
     fi
+}
+
+wait_for_command() {
+    local pid=$1
+    local message=$2
+    echo "$message"
+    wait $pid
+    return $?
 }
 
 # Function to read configuration file
@@ -192,8 +202,10 @@ sort_versions() {
     done
 
     if [ ${#invalid_versions[@]} -gt 0 ]; then
-        echo "Warning: The following versions were ignored due to invalid format:" >&2
-        printf '%s\n' "${invalid_versions[@]}" >&2
+        log_verbose "Warning: The following versions were ignored due to invalid format:"
+        for invalid_version in "${invalid_versions[@]}"; do
+            log_verbose "invalid_versions: $invalid_version"
+        done
     fi
 
     # Sort valid versions
@@ -219,43 +231,105 @@ sort_versions() {
     echo "${valid_versions[@]}"
 }
 
+# Function to create temporary npmrc files
+create_npmrc_files() {
+    local script_dir=$(dirname "$0")
+    SOURCE_NPMRC_FILE="${script_dir}/source.npmrc"
+    TARGET_NPMRC_FILE="${script_dir}/target.npmrc"
+
+    echo "registry=${SOURCE_REGISTRY}" > "$SOURCE_NPMRC_FILE"
+    echo "//${SOURCE_REGISTRY#*//}:_authToken=${SOURCE_AUTH_TOKEN}" >> "$SOURCE_NPMRC_FILE"
+
+    echo "registry=${TARGET_REGISTRY}" > "$TARGET_NPMRC_FILE"
+    echo "//${TARGET_REGISTRY#*//}:_authToken=${TARGET_AUTH_TOKEN}" >> "$TARGET_NPMRC_FILE"
+
+    log_verbose "Created npmrc files in script directory:"
+    log_verbose "Source npmrc: $SOURCE_NPMRC_FILE"
+    log_verbose "Target npmrc: $TARGET_NPMRC_FILE"
+}
+
 # Registry-specific functions
 
 npm_fetch_versions() {
-    npm view $PACKAGE_NAME versions --registry $SOURCE_REGISTRY | tr -d "[]'," | tr ' ' '\n'
+    local full_package_name="$PACKAGE_NAME"
+    if [ ! -z "$PACKAGE_SCOPE" ]; then
+        full_package_name="${PACKAGE_SCOPE}/${PACKAGE_NAME}"
+    fi
+    log_verbose "Fetching versions for $full_package_name from npm registry: $SOURCE_REGISTRY"
+    local versions
+    versions=$(npm view "$full_package_name" versions --registry "$SOURCE_REGISTRY" --userconfig="$SOURCE_NPMRC_FILE" | tr -d "[]'," | tr ' ' '\n') &
+    wait_for_command $! "Fetching versions of package $full_package_name"
+
+    if [ -z "$versions" ]; then
+        echo "Error: Unable to fetch versions for $full_package_name" >&2
+        return 1
+    fi
+    echo "$versions"
 }
 
 npm_download_package() {
     local version=$1
-    npm pack $PACKAGE_NAME@$version --registry $SOURCE_REGISTRY --pack-destination ./tarballs
+    local full_package_name="$PACKAGE_NAME"
+    if [ ! -z "$PACKAGE_SCOPE" ]; then
+        full_package_name="${PACKAGE_SCOPE}/${PACKAGE_NAME}"
+    fi
+    npm pack "$full_package_name@$version" --registry "$SOURCE_REGISTRY" --userconfig="$SOURCE_NPMRC_FILE" --pack-destination ./tarballs &
+    wait_for_command $! "Downloading package $full_package_name@$version..."
 }
 
 npm_publish_package() {
     local tarball=$1
-    npm publish "./tarballs/$tarball" --registry $TARGET_REGISTRY
+    npm publish "./tarballs/$tarball" --registry "$TARGET_REGISTRY" --userconfig="$TARGET_NPMRC_FILE" &
+    wait_for_command $! "Publishing package $tarball..."
 }
 
 pypi_fetch_versions() {
-    pip index versions $PACKAGE_NAME
+    log_verbose "Fetching versions for $PACKAGE_NAME from PyPI registry: $SOURCE_REGISTRY"
+    local versions=$(pip index versions $PACKAGE_NAME)
+    log_verbose "Fetched versions: $versions"
+    echo "$versions"
 }
 
 pypi_download_package() {
     local version=$1
-    pip download $PACKAGE_NAME==$version -d ./tarballs
+    pip download $PACKAGE_NAME==$version -d ./tarballs &
+    wait_for_command $! "Downloading package $PACKAGE_NAME==$version..."
 }
 
 pypi_publish_package() {
     local tarball=$1
-    twine upload "./tarballs/$tarball" --repository-url $TARGET_REGISTRY
+    twine upload "./tarballs/$tarball" --repository-url $TARGET_REGISTRY &
+    wait_for_command $! "Publishing package $tarball..."
 }
+
 
 # Main logic functions
 fetch_versions() {
+    log_verbose "Starting version fetch for $PACKAGE_NAME using $REGISTRY_TYPE registry"
+    local versions
     case $REGISTRY_TYPE in
-        npm) npm_fetch_versions ;;
-        pypi) pypi_fetch_versions ;;
-        *) echo "Unsupported registry type: $REGISTRY_TYPE"; exit 1 ;;
+        npm)
+            versions=$(npm_fetch_versions)
+            ;;
+        pypi)
+            versions=$(pypi_fetch_versions)
+            ;;
+        *)
+            echo "Unsupported registry type: $REGISTRY_TYPE" >&2
+            exit 1
+            ;;
     esac
+
+    if [ -z "$versions" ]; then
+        log_verbose "No versions found for $PACKAGE_NAME"
+        echo ""
+    else
+        log_verbose "Fetched versions for $PACKAGE_NAME: $versions"
+        if [ "$DRY_RUN" = true ]; then
+            log_dry_run "Would process the following versions: $versions"
+        fi
+        echo "$versions"
+    fi
 }
 
 download_package() {
@@ -355,6 +429,9 @@ log_verbose "Package Name: $PACKAGE_NAME"
 log_verbose "Package Scope: $PACKAGE_SCOPE"
 log_verbose "Registry Type: $REGISTRY_TYPE"
 
+# Create temporary npmrc files
+create_npmrc_files
+
 # Create directory for tarballs
 mkdir -p ./tarballs
 log_verbose "Created directory: ./tarballs"
@@ -362,6 +439,11 @@ log_verbose "Created directory: ./tarballs"
 # Fetch all versions
 echo "Fetching all versions from source registry..."
 VERSIONS=$(fetch_versions)
+if [ $? -ne 0 ]; then
+    echo "Failed to fetch versions. Exiting."
+    exit 1
+fi
+echo "All versions from source registry: ${VERSIONS}"
 
 if [ -z "$VERSIONS" ]; then
     echo "No versions found for package $PACKAGE_NAME in registry $SOURCE_REGISTRY"
@@ -431,3 +513,9 @@ if [ "$DRY_RUN" = true ]; then
     echo "This was a dry run. No actual publishing was performed."
 fi
 log_verbose "Migration process finished successfully"
+
+# Clean up npmrc files
+if [ "$DRY_RUN" = false ]; then
+    rm -f "$SOURCE_NPMRC_FILE" "$TARGET_NPMRC_FILE"
+    log_verbose "Removed npmrc files"
+fi

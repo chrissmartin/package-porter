@@ -2,3 +2,7 @@
 .env
 .env.local
 .env.*.local
+
+# Generated Files
+*.npmrc
+tarballs/*
