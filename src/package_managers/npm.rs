@@ -117,30 +117,48 @@ fn create_temp_npmrc(
     auth_token: &str,
     scope: &Option<String>,
 ) -> Result<String, Box<dyn Error>> {
+    debug!(
+        "create_temp_npmrc called with:\n\
+         registry: {}\n\
+         auth_token: {}\n\
+         scope: {:?}",
+        registry, "[REDACTED]", scope
+    );
+
     let temp_dir = std::env::temp_dir();
     let npmrc_path = temp_dir.join(".npmrc");
     let mut file = File::create(&npmrc_path)?;
 
     let registry_url = Url::parse(registry)?;
-    let registry_host = registry_url.host_str().ok_or("Invalid registry URL")?;
+    let registry_host_with_path = registry_url
+        .host_str()
+        .ok_or("Invalid registry URL")?
+        .to_string()
+        + registry_url.path();
 
-    let npmrc_content = match scope {
-        Some(s) => format!(
-            "{}:registry={}\n//{}/:_authToken={}\n",
-            s, registry, registry_host, auth_token
-        ),
-        None => format!(
-            "registry={}\n//{}/:_authToken={}\n",
-            registry, registry_host, auth_token
-        ),
-    };
+    let mut npmrc_content = String::new();
+
+    if let Some(s) = scope {
+        // Add scope-specific configuration if a scope is provided
+        npmrc_content.push_str(&format!("{}:registry={}\n", s, registry));
+    } else {
+        // Add general registry configuration
+        npmrc_content.push_str(&format!("registry={}\n", registry));
+    }
+
+    // Add authentication token
+    npmrc_content.push_str(&format!(
+        "//{}:_authToken={}\n",
+        registry_host_with_path, auth_token
+    ));
 
     file.write_all(npmrc_content.as_bytes())?;
 
-    // Log the content of the .npmrc file
+    // Log the content of the .npmrc file (be cautious with auth token)
     debug!(
         "Created temporary .npmrc file at {:?} with content:\n{}",
-        npmrc_path, npmrc_content
+        npmrc_path,
+        npmrc_content.replace(auth_token, "********")
     );
 
     Ok(npmrc_path.to_string_lossy().into_owned())

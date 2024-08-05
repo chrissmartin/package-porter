@@ -1,5 +1,6 @@
 use dotenv::dotenv;
 use std::env;
+use crate::utils::validate_and_normalize_url;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -15,12 +16,15 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_env() -> Result<Self, env::VarError> {
+    pub fn from_env() -> Result<Self, Box<dyn std::error::Error>> {
         dotenv().ok(); // This will load the .env file
 
+        let source_registry = validate_and_normalize_url(env::var("SOURCE_REGISTRY")?)?;
+        let target_registry = validate_and_normalize_url(env::var("TARGET_REGISTRY")?)?;
+
         Ok(Config {
-            source_registry: env::var("SOURCE_REGISTRY")?,
-            target_registry: env::var("TARGET_REGISTRY")?,
+            source_registry,
+            target_registry,
             package_name: env::var("PACKAGE_NAME")?,
             package_scope: env::var("PACKAGE_SCOPE").ok(),
             source_auth_token: env::var("SOURCE_AUTH_TOKEN")?,

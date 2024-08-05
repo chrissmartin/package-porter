@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::utils::validate_and_normalize_url;
 use clap::{Arg, ArgAction, Command};
 use std::error::Error;
 
@@ -58,15 +59,23 @@ pub fn parse_args() -> Result<Config, Box<dyn Error>> {
         )
         .get_matches();
 
-    Ok(Config {
-        source_registry: matches
+    let source_registry = validate_and_normalize_url(
+        matches
             .get_one::<String>("source-registry")
             .map(|s| s.to_string())
             .unwrap_or(env_config.source_registry),
-        target_registry: matches
+    )?;
+
+    let target_registry = validate_and_normalize_url(
+        matches
             .get_one::<String>("target-registry")
             .map(|s| s.to_string())
             .unwrap_or(env_config.target_registry),
+    )?;
+
+    Ok(Config {
+        source_registry,
+        target_registry,
         package_name: matches
             .get_one::<String>("package")
             .map(|s| s.to_string())
