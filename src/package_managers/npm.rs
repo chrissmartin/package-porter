@@ -20,7 +20,7 @@ impl PackageManager for NpmPackageManager {
         let mut command = Command::new("npm");
         command
             .arg("view")
-            .arg(&config.full_package_name())
+            .arg(config.full_package_name())
             .arg("versions")
             .arg("--json")
             .arg("--userconfig")
