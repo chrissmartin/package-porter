@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - "**" # This will run the workflow on push to any branch
-  pull_request:
-    branches:
-      - "**" # This will run the workflow on pull requests to any branch
 
 env:
   CARGO_TERM_COLOR: always
