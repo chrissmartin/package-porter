@@ -1,6 +1,6 @@
-use url::Url;
 use semver::Version;
 use std::cmp::Ordering;
+use url::Url;
 
 pub fn sort_versions(versions: Vec<String>) -> Vec<String> {
     let mut parsed_versions: Vec<(String, Option<Version>)> = versions

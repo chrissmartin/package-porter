@@ -13,7 +13,7 @@ impl PackageManager for PyPiPackageManager {
             "{}/pypi/{}/json",
             config.source_registry, config.package_name
         );
-        let response: Value = reqwest::blocking::get(&url)?.json()?;
+        let response: Value = reqwest::blocking::get(url)?.json()?;
 
         let versions = response["releases"]
             .as_object()

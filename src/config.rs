@@ -1,6 +1,6 @@
+use crate::utils::validate_and_normalize_url;
 use dotenv::dotenv;
 use std::env;
-use crate::utils::validate_and_normalize_url;
 
 #[derive(Debug, Clone)]
 pub struct Config {
