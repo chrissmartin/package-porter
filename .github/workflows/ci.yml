@@ -12,21 +12,36 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
+  install-rust:
+    uses: ./.github/workflows/rust-installation.yml
+
+  build:
+    name: Build
+    needs: install-rust
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
+      - uses: ./.github/workflows/rust-installation.yml
       - name: Build
         run: cargo build --verbose
+
+  test:
+    name: Test
+    needs: install-rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/workflows/rust-installation.yml
       - name: Run tests
         run: cargo test --verbose
+
+  lint:
+    name: Lint
+    needs: install-rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/workflows/rust-installation.yml
       - name: Run clippy
         run: cargo clippy -- -D warnings
       - name: Check formatting

@@ -1,0 +1,26 @@
+name: Rust Installation
+
+on:
+  workflow_call:
+    inputs:
+      rust-version:
+        required: false
+        type: string
+        default: "stable"
+      components:
+        required: false
+        type: string
+        default: "rustfmt, clippy"
+
+jobs:
+  install-rust:
+    name: Install Rust
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ inputs.rust-version }}
+          override: true
+          components: ${{ inputs.components }}
