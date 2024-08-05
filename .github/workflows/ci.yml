@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           profile: minimal
           toolchain: stable
@@ -29,8 +29,8 @@ jobs:
     needs: install-rust
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           profile: minimal
           toolchain: stable
@@ -43,22 +43,22 @@ jobs:
     needs: install-rust
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test --all-features --verbose
 
   lint:
     name: Lint
     needs: install-rust
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           profile: minimal
           toolchain: stable
